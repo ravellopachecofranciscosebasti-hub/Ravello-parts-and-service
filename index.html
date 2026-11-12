@@ -951,7 +951,7 @@
 
       <div id="print-area" class="space-y-4 font-sans text-xs sm:text-sm">
         <div class="text-center pb-3 border-b border-dashed border-slate-300">
-          <div class="text-xl font-black tracking-tight" id="rc-taller-nombre">MOTO TECH TALLER</div>
+          <div class="text-xl font-black tracking-tight" id="rc-taller-nombre">RAVELLO PARTS AND SERVICE TALLER</div>
           <div class="text-xs text-slate-600" id="rc-taller-ruc">NIT / RUC: 900.123.456-7</div>
           <div class="text-xs text-slate-600" id="rc-taller-dir">Dirección: Calle Principal #12-34</div>
           <div class="text-xs text-slate-600" id="rc-taller-tel">Tel: +57 300 123 4567</div>
@@ -1042,11 +1042,11 @@
 
   <!-- JS APP CORE CON INTEGRACIÓN DE GOOGLE SHEETS -->
   <script>
-    const DB_KEY = 'mototech_pro_v2';
+    const DB_KEY = 'ravello_parts_and_service';
     
     let db = {
       config: {
-        nombre: 'MOTO TECH TALLER',
+        nombre: 'RAVELLO PARTS AND SERVICE TALLER',
         ruc: 'NIT / RUC: 900.123.456-7',
         tel: '+57 300 123 4567',
         dir: 'Calle Principal #12-34',
@@ -2352,7 +2352,7 @@
       activeServiceIdForReceipt = s.id;
       const m = db.motos.find(x => x.placa === s.placa);
 
-      document.getElementById('rc-taller-nombre').textContent = db.config.nombre || 'MOTO TECH TALLER';
+      document.getElementById('rc-taller-nombre').textContent = db.config.nombre || 'RAVELLO PARTS AND SERVICE TALLER';
       document.getElementById('rc-taller-ruc').textContent = db.config.ruc || '';
       document.getElementById('rc-taller-dir').textContent = db.config.dir ? `Dirección: ${db.config.dir}` : '';
       document.getElementById('rc-taller-tel').textContent = db.config.tel ? `Tel: ${db.config.tel}` : '';
@@ -2422,7 +2422,7 @@
       const m = db.motos.find(x => x.placa === s.placa);
       const telClean = (m && m.tel ? m.tel : '').replace(/[^\d]/g, '');
 
-      let msg = `*${db.config.nombre || 'MOTO TECH TALLER'}*\n`;
+      let msg = `*${db.config.nombre || 'RAVELLO PARTS AND SERVICE TALLER'}*\n`;
       msg += `*Comprobante de Servicio #OT-${String(s.id).slice(-4)}*\n\n`;
       msg += `Hola ${m ? m.cliente : 'estimado cliente'},\n`;
       msg += `Tu motocicleta *${s.placa}* (${m ? m.modelo || '' : ''}) fue atendida con éxito.\n\n`;
@@ -2470,7 +2470,7 @@
     function guardarConfigTaller() {
       db.config = {
         ...db.config,
-        nombre: document.getElementById('cfg-nombre').value.trim() || 'MOTO TECH TALLER',
+        nombre: document.getElementById('cfg-nombre').value.trim() || 'RAVELLO PARTS AND SERVICE TALLER',
         ruc: document.getElementById('cfg-ruc').value.trim(),
         tel: document.getElementById('cfg-tel').value.trim(),
         dir: document.getElementById('cfg-dir').value.trim(),
