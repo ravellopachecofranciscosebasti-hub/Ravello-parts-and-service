@@ -1,0 +1,2583 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#ef4444">
+  <meta name="description" content="Sistema integral de gestión de taller de motos, clientes, servicios, inventario y facturación">
+  <title>MotoTech Pro - Taller de Motos</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <!-- SheetJS para lectura/importación de Excel y CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#fef2f2',
+              100: '#fee2e2',
+              500: '#ef4444',
+              600: '#dc2626',
+              700: '#b91c1c',
+              dark: '#0f172a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 12px; background: white !important; color: black !important; }
+      .no-print { display: none !important; }
+    }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.2s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="h-full bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans flex flex-col antialiased select-none-subtle">
+
+  <!-- TOP HEADER (Desktop & Mobile) -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Workshop Name -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="navigate('dashboard')">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+            <i class="fa-solid fa-motorcycle text-xl"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white" id="brand-title">MOTO<span class="text-brand-600">TECH</span></span>
+              <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-brand-50 text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">PRO</span>
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block" id="brand-slogan">Gestión Integral de Taller</p>
+          </div>
+        </div>
+
+        <!-- Quick actions & Theme Switcher -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <button onclick="openModalServicio()" class="hidden sm:inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-2 rounded-xl text-sm font-semibold shadow-sm transition">
+            <i class="fa-solid fa-wrench"></i>
+            <span>+ Servicio</span>
+          </button>
+          
+          <button onclick="openModalMoto()" class="hidden sm:inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white dark:bg-slate-800 dark:hover:bg-slate-700 px-3.5 py-2 rounded-xl text-sm font-semibold shadow-sm transition">
+            <i class="fa-solid fa-plus"></i>
+            <span>+ Moto</span>
+          </button>
+
+          <!-- Theme Toggle -->
+          <button onclick="toggleTheme()" class="p-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition" title="Cambiar tema">
+            <i id="theme-icon" class="fa-solid fa-moon text-base"></i>
+          </button>
+
+          <!-- Backup Quick Trigger -->
+          <button onclick="navigate('config')" class="p-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition" title="Ajustes y Respaldo">
+            <i class="fa-solid fa-gear text-base"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- BODY CONTENT WITH SIDEBAR FOR DESKTOP -->
+  <div class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6 flex gap-6 overflow-hidden">
+    
+    <!-- DESKTOP SIDEBAR NAVIGATION -->
+    <aside class="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm h-fit sticky top-24 shrink-0">
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">Módulos</div>
+      <nav class="space-y-1">
+        <button onclick="navigate('dashboard')" data-tab="dashboard" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-chart-pie w-5 text-center text-slate-400"></i>
+            <span>Dashboard</span>
+          </div>
+        </button>
+
+        <button onclick="navigate('motos')" data-tab="motos" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-motorcycle w-5 text-center text-slate-400"></i>
+            <span>Motos & Clientes</span>
+          </div>
+          <span id="badge-total-motos" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">0</span>
+        </button>
+
+        <button onclick="navigate('servicios')" data-tab="servicios" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-clipboard-list w-5 text-center text-slate-400"></i>
+            <span>Servicios / O.T.</span>
+          </div>
+          <span id="badge-total-servicios" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">0</span>
+        </button>
+
+        <button onclick="navigate('alertas')" data-tab="alertas" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-triangle-exclamation w-5 text-center text-amber-500"></i>
+            <span>Alertas de Aceite</span>
+          </div>
+          <span id="badge-sidebar-alertas" class="text-xs px-2 py-0.5 rounded-full bg-red-500 text-white font-bold hidden">0</span>
+        </button>
+
+        <button onclick="navigate('inventario')" data-tab="inventario" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-boxes-stacked w-5 text-center text-slate-400"></i>
+            <span>Inventario</span>
+          </div>
+          <span id="badge-sidebar-inventario" class="text-xs px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold hidden">0</span>
+        </button>
+
+        <button onclick="navigate('finanzas')" data-tab="finanzas" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-cash-register w-5 text-center text-slate-400"></i>
+            <span>Caja & Finanzas</span>
+          </div>
+        </button>
+      </nav>
+
+      <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
+        <button onclick="navigate('config')" data-tab="config" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <i class="fa-solid fa-sliders w-5 text-center text-slate-400"></i>
+          <span>Ajustes & Respaldo</span>
+        </button>
+      </div>
+
+      <div class="mt-6 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-xs">
+        <div class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 mb-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Google Sheets Link Activo</span>
+        </div>
+        <p class="text-slate-500 dark:text-slate-400 text-[11px] leading-tight">Sincroniza tu stock en vivo con Google Sheets o trabaja en modo offline cuando lo necesites.</p>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEW AREA -->
+    <main class="flex-1 w-full pb-20 lg:pb-8 overflow-y-auto">
+
+      <!-- DASHBOARD -->
+      <section id="tab-dashboard" class="tab-content active space-y-6">
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden border border-slate-800">
+          <div class="absolute -right-6 -bottom-8 opacity-10 text-9xl text-white pointer-events-none">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+          </div>
+          <div class="relative z-10 max-w-xl">
+            <span class="inline-block text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-md mb-2">Panel Principal</span>
+            <h2 class="text-2xl sm:text-3xl font-black tracking-tight" id="dash-greeting">¡Bienvenido a MotoTech!</h2>
+            <p class="text-slate-300 text-sm mt-1">Control de clientes, órdenes de trabajo, inventario sincronizado con Google Sheets y finanzas en un solo lugar.</p>
+            <div class="flex flex-wrap gap-2.5 mt-4">
+              <button onclick="openModalServicio()" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-brand-600/30 transition flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Nueva Orden de Servicio
+              </button>
+              <button onclick="openModalMoto()" class="bg-slate-700/80 hover:bg-slate-700 text-white font-medium text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-600 transition flex items-center gap-2">
+                <i class="fa-solid fa-motorcycle"></i> Registrar Moto
+              </button>
+              <button onclick="sincronizarDesdeGoogleSheets()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs sm:text-sm px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow">
+                <i class="fa-solid fa-rotate"></i> Sincronizar Stock
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition" onclick="navigate('motos')">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase">Motos Registradas</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <i class="fa-solid fa-motorcycle text-sm"></i>
+              </div>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white" id="stat-motos">0</div>
+            <p class="text-[11px] text-slate-500 mt-1">Clientes registrados</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition" onclick="navigate('servicios')">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase">Servicios del Mes</span>
+              <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <i class="fa-solid fa-wrench text-sm"></i>
+              </div>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white" id="stat-servicios-mes">0</div>
+            <p class="text-[11px] text-slate-500 mt-1" id="stat-servicios-total">Total histórico: 0</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition" onclick="navigate('alertas')">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase">Alertas Aceite</span>
+              <div class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
+                <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+              </div>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-red-600 dark:text-red-400" id="stat-alertas">0</div>
+            <p class="text-[11px] text-slate-500 mt-1">Vencidos o próximos</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition" onclick="navigate('finanzas')">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase">Ingresos Mes</span>
+              <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <i class="fa-solid fa-dollar-sign text-sm"></i>
+              </div>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white" id="stat-ingresos-mes">$0</div>
+            <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1" id="stat-ganancia-mes">Ganancia neta: $0</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <i class="fa-solid fa-clock-rotate-left text-brand-600"></i> Últimos Servicios Realizados
+                </h3>
+                <p class="text-xs text-slate-400">Trabajos recientes registrados en el taller</p>
+              </div>
+              <button onclick="navigate('servicios')" class="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline">Ver todos &rarr;</button>
+            </div>
+            <div id="dash-recent-services" class="space-y-3"></div>
+          </div>
+
+          <div class="space-y-6">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <i class="fa-solid fa-bell text-red-500"></i> Alertas de Mantenimiento
+                </h3>
+                <button onclick="navigate('alertas')" class="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline">Ver todas</button>
+              </div>
+              <div id="dash-urgent-alerts" class="space-y-2"></div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <i class="fa-solid fa-boxes-stacked text-amber-500"></i> Repuestos con Poco Stock
+                </h3>
+                <button onclick="navigate('inventario')" class="text-xs text-brand-600 dark:text-brand-400 font-semibold hover:underline">Inventario</button>
+              </div>
+              <div id="dash-low-stock" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MOTOS -->
+      <section id="tab-motos" class="tab-content space-y-4">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row gap-3 justify-between items-center">
+          <div class="relative w-full sm:w-80">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="search-motos" oninput="renderMotosList()" placeholder="Buscar por placa, cliente o modelo..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+          
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <select id="filter-oil-status" onchange="renderMotosList()" class="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm font-medium focus:outline-none">
+              <option value="all">Todos los estados</option>
+              <option value="vencido">⚠️ Aceite Vencido</option>
+              <option value="proximo">⏱️ Próximo a vencer</option>
+              <option value="aldia">✅ Al día</option>
+            </select>
+            <button onclick="openModalMoto()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shrink-0 transition">
+              <i class="fa-solid fa-plus"></i>
+              <span>Nueva Moto</span>
+            </button>
+          </div>
+        </div>
+        <div id="motos-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- SERVICIOS -->
+      <section id="tab-servicios" class="tab-content space-y-4">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row gap-3 justify-between items-center">
+          <div class="relative w-full sm:w-80">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="search-servicios" oninput="renderServiciosList()" placeholder="Buscar servicio por placa o cliente..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <select id="filter-servicio-tipo" onchange="renderServiciosList()" class="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm font-medium focus:outline-none">
+              <option value="all">Todos los tipos</option>
+              <option value="Cambio de aceite">Cambio de aceite</option>
+              <option value="Mantenimiento general">Mantenimiento general</option>
+              <option value="Frenos">Frenos</option>
+              <option value="Transmisión">Transmisión</option>
+              <option value="Eléctrico">Eléctrico</option>
+              <option value="Llantas">Llantas</option>
+              <option value="Motor">Motor</option>
+            </select>
+            <button onclick="openModalServicio()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shrink-0 transition">
+              <i class="fa-solid fa-wrench"></i>
+              <span>+ Registrar Servicio</span>
+            </button>
+          </div>
+        </div>
+        <div id="servicios-list" class="space-y-3"></div>
+      </section>
+
+      <!-- ALERTAS -->
+      <section id="tab-alertas" class="tab-content space-y-4">
+        <div class="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 text-lg">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-amber-900 dark:text-amber-200 text-sm">Control Preventivo de Aceite</h3>
+            <p class="text-xs text-amber-700 dark:text-amber-300">Motos con cambio de aceite vencido o próximo (menos de 15 días o menos de 300 km). Envía avisos a WhatsApp con un solo clic.</p>
+          </div>
+        </div>
+        <div id="alertas-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- INVENTARIO CON INTEGRACIÓN DIRECTA GOOGLE SHEETS & EXCEL -->
+      <section id="tab-inventario" class="tab-content space-y-4">
+        
+        <!-- Google Sheets Direct Connection Banner -->
+        <div class="bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 text-xl shadow">
+                <i class="fa-solid fa-link"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                  <span>Sincronización con Google Sheets</span>
+                  <span id="gsheet-status-badge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-200 dark:bg-slate-800 text-slate-500">No vinculado</span>
+                </h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Jala y actualiza el inventario directamente desde la URL de tu hoja de cálculo de Google.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button onclick="sincronizarDesdeGoogleSheets()" id="btn-sync-gsheet" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 shrink-0 shadow transition">
+                <i class="fa-solid fa-rotate"></i>
+                <span>Sincronizar Ahora</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1 border-t border-emerald-500/20">
+            <div class="sm:col-span-9">
+              <input type="url" id="cfg-gsheet-url" placeholder="Pega aquí la URL de tu Google Sheets (ej: https://docs.google.com/spreadsheets/d/e/.../pubhtml)" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+            <div class="sm:col-span-3 flex items-center justify-between sm:justify-end gap-2">
+              <button onclick="guardarUrlGSheet()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-xs font-semibold w-full sm:w-auto">
+                Guardar URL
+              </button>
+              <label class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer shrink-0" title="Sincronizar automáticamente cada vez que se inicie la app">
+                <input type="checkbox" id="cfg-gsheet-autosync" onchange="guardarUrlGSheet()" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                <span>Auto-sync</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual Excel file fallback uploader -->
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-file-excel text-emerald-600 text-base"></i>
+            <span class="text-slate-600 dark:text-slate-300">¿Prefieres subir un archivo local? Puedes cargar un archivo <b>.xlsx / .xls / .csv</b> directo de tu computadora:</span>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <label class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition">
+              <span>Seleccionar Archivo</span>
+              <input type="file" id="file-excel-inventario" accept=".xlsx, .xls, .csv" onchange="importarInventarioExcel(event)" class="hidden">
+            </label>
+            <button onclick="descargarPlantillaExcel()" class="text-xs text-brand-600 dark:text-brand-400 font-bold hover:underline">
+              Plantilla
+            </button>
+          </div>
+        </div>
+
+        <!-- Search Controls -->
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row gap-3 justify-between items-center">
+          <div class="relative w-full sm:w-72">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="search-repuestos" oninput="renderInventario()" placeholder="Buscar repuesto por código o nombre..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <select id="filter-repuesto-cat" onchange="renderInventario()" class="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm font-medium focus:outline-none">
+              <option value="all">Todas las categorías</option>
+              <option value="Aceites y Lubricantes">Aceites y Lubricantes</option>
+              <option value="Frenos">Frenos</option>
+              <option value="Filtros">Filtros</option>
+              <option value="Transmisión">Transmisión</option>
+              <option value="Eléctrico">Eléctrico</option>
+              <option value="Llantas y Neumáticos">Llantas y Neumáticos</option>
+              <option value="Varios">Varios</option>
+            </select>
+            <button onclick="openModalRepuesto()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shrink-0 transition">
+              <i class="fa-solid fa-plus"></i>
+              <span>+ Nuevo Repuesto</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Inventory KPI cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-xs text-slate-400 uppercase font-semibold">Total Ítems</span>
+            <div class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white" id="inv-total-items">0</div>
+          </div>
+          <div class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-xs text-slate-400 uppercase font-semibold">Valor Inventario (Costo)</span>
+            <div class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white" id="inv-total-costo">$0</div>
+          </div>
+          <div class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm col-span-2 sm:col-span-1">
+            <span class="text-xs text-slate-400 uppercase font-semibold">Valor al Público</span>
+            <div class="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400" id="inv-total-venta">$0</div>
+          </div>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto scrollbar-thin">
+            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+              <thead class="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
+                <tr>
+                  <th class="px-4 py-3">Código</th>
+                  <th class="px-4 py-3">Descripción</th>
+                  <th class="px-4 py-3">Categoría</th>
+                  <th class="px-4 py-3 text-center">Stock</th>
+                  <th class="px-4 py-3 text-right">P. Costo</th>
+                  <th class="px-4 py-3 text-right">P. Venta</th>
+                  <th class="px-4 py-3 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="inventario-tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CAJA Y FINANZAS -->
+      <section id="tab-finanzas" class="tab-content space-y-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase">Total Facturado</span>
+              <i class="fa-solid fa-arrow-trend-up text-emerald-500"></i>
+            </div>
+            <div class="text-3xl font-black text-slate-900 dark:text-white" id="fin-ingresos-total">$0</div>
+            <p class="text-xs text-slate-400 mt-1">Ingresos brutos totales</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase">Costo de Repuestos</span>
+              <i class="fa-solid fa-cart-shopping text-amber-500"></i>
+            </div>
+            <div class="text-3xl font-black text-slate-900 dark:text-white" id="fin-costos-total">$0</div>
+            <p class="text-xs text-slate-400 mt-1">Costo de materiales usados</p>
+          </div>
+
+          <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between text-slate-400 mb-2">
+              <span class="text-xs font-semibold uppercase">Ganancia Neta</span>
+              <i class="fa-solid fa-sack-dollar text-emerald-500"></i>
+            </div>
+            <div class="text-3xl font-black text-emerald-600 dark:text-emerald-400" id="fin-ganancia-total">$0</div>
+            <p class="text-xs text-emerald-500 mt-1">Mano de obra + margen repuestos</p>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 class="font-bold text-base text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-bar text-brand-600"></i> Distribución por Tipo de Servicio
+          </h3>
+          <div id="finanzas-breakdown" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <!-- CONFIGURACIÓN -->
+      <section id="tab-config" class="tab-content space-y-6">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 class="font-bold text-base text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-store text-brand-600"></i> Datos del Taller (Facturas y Comprobantes)
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Se imprimen en los recibos y mensajes de WhatsApp.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Nombre del Taller</label>
+              <input type="text" id="cfg-nombre" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">RUC / NIT / Cédula</label>
+              <input type="text" id="cfg-ruc" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Teléfono / WhatsApp</label>
+              <input type="text" id="cfg-tel" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Dirección</label>
+              <input type="text" id="cfg-dir" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Símbolo de Moneda</label>
+              <input type="text" id="cfg-moneda" placeholder="$" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Lema o Pie de Recibo</label>
+              <input type="text" id="cfg-pie" placeholder="¡Gracias por su preferencia! Garantía 30 días" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button onclick="guardarConfigTaller()" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl shadow transition">
+              Guardar Datos del Taller
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 class="font-bold text-base text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i> Exportación a Excel / CSV
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Descarga tus datos en formato compatible con Microsoft Excel o Google Sheets.</p>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button onclick="exportarCSV('motos')" class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition flex items-center justify-between">
+              <div>
+                <div class="font-bold text-sm text-slate-800 dark:text-white">Clientes y Motos</div>
+                <div class="text-xs text-slate-400">Descargar CSV</div>
+              </div>
+              <i class="fa-solid fa-download text-slate-400"></i>
+            </button>
+            <button onclick="exportarCSV('servicios')" class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition flex items-center justify-between">
+              <div>
+                <div class="font-bold text-sm text-slate-800 dark:text-white">Servicios y Ventas</div>
+                <div class="text-xs text-slate-400">Descargar CSV</div>
+              </div>
+              <i class="fa-solid fa-download text-slate-400"></i>
+            </button>
+            <button onclick="exportarCSV('inventario')" class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition flex items-center justify-between">
+              <div>
+                <div class="font-bold text-sm text-slate-800 dark:text-white">Inventario Repuestos</div>
+                <div class="text-xs text-slate-400">Descargar CSV / Excel</div>
+              </div>
+              <i class="fa-solid fa-download text-slate-400"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 class="font-bold text-base text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-brand-600"></i> Respaldo y Restauración Completa
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Guarda una copia exacta de seguridad de todo el sistema en un archivo `.json`.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between">
+              <div>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-white mb-1">Descargar Respaldo Seguro</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Genera un archivo `.json` descargable para guardar en tu equipo o nube.</p>
+              </div>
+              <button onclick="descargarRespaldoJSON()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-down"></i> Descargar Respaldo (.json)
+              </button>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex flex-col justify-between">
+              <div>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-white mb-1">Restaurar Respaldo</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Sube un archivo `.json` previamente descargado para recuperar tus datos.</p>
+              </div>
+              <label class="w-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar Archivo .json
+                <input type="file" id="file-restore" accept=".json" onchange="restaurarRespaldoArchivo(event)" class="hidden">
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-40 flex items-center justify-around py-1.5 px-2">
+    <button onclick="navigate('dashboard')" data-tab="dashboard" class="mobile-nav-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 text-[11px] font-medium transition">
+      <i class="fa-solid fa-chart-pie text-lg mb-0.5"></i>
+      <span>Inicio</span>
+    </button>
+    <button onclick="navigate('motos')" data-tab="motos" class="mobile-nav-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 text-[11px] font-medium transition">
+      <i class="fa-solid fa-motorcycle text-lg mb-0.5"></i>
+      <span>Motos</span>
+    </button>
+    <button onclick="navigate('servicios')" data-tab="servicios" class="mobile-nav-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 text-[11px] font-medium transition">
+      <i class="fa-solid fa-wrench text-lg mb-0.5"></i>
+      <span>Servicios</span>
+    </button>
+    <button onclick="navigate('alertas')" data-tab="alertas" class="mobile-nav-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 text-[11px] font-medium transition relative">
+      <i class="fa-solid fa-triangle-exclamation text-lg mb-0.5 text-amber-500"></i>
+      <span>Alertas</span>
+      <span id="badge-mobile-alertas" class="absolute top-0 right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center hidden">0</span>
+    </button>
+    <button onclick="navigate('inventario')" data-tab="inventario" class="mobile-nav-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 text-[11px] font-medium transition">
+      <i class="fa-solid fa-boxes-stacked text-lg mb-0.5"></i>
+      <span>Stock</span>
+    </button>
+  </nav>
+
+  <!-- MODALS -->
+
+  <!-- MODAL MOTO -->
+  <div id="modal-moto" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-8">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="font-extrabold text-lg text-slate-900 dark:text-white" id="modal-moto-title">Registrar Moto y Cliente</h3>
+          <p class="text-xs text-slate-400">Completa los datos de la motocicleta y su propietario</p>
+        </div>
+        <button onclick="closeModal('modal-moto')" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="moto-edit-orig-placa">
+
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Placa / Matrícula *</label>
+            <input type="text" id="m-placa" placeholder="ABC123" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono uppercase font-bold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Kilometraje Actual *</label>
+            <input type="number" id="m-km" placeholder="25000" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Marca / Fabricante</label>
+            <input type="text" id="m-marca" placeholder="Yamaha, Honda, Bajaj..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Modelo / Cilindraje</label>
+            <input type="text" id="m-modelo" placeholder="FZ 2.0 / 150cc" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Año</label>
+            <input type="number" id="m-ano" placeholder="2022" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Color</label>
+            <input type="text" id="m-color" placeholder="Negro / Rojo" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+        </div>
+
+        <hr class="border-slate-100 dark:border-slate-800 my-2">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Datos del Propietario</p>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Nombre Completo *</label>
+          <input type="text" id="m-cliente" placeholder="Carlos Mendoza" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Teléfono / WhatsApp *</label>
+            <input type="tel" id="m-tel" placeholder="3001234567" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Email / Documento</label>
+            <input type="text" id="m-doc" placeholder="10203040" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Notas o Historial Preliminar</label>
+          <textarea id="m-notas" rows="2" placeholder="Detalles particulares de la moto..." class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <button onclick="closeModal('modal-moto')" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+        <button onclick="guardarMotoModal()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow">Guardar Moto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SERVICIO -->
+  <div id="modal-servicio" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-8">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="font-extrabold text-lg text-slate-900 dark:text-white" id="modal-serv-title">Registrar Servicio / Orden de Trabajo</h3>
+          <p class="text-xs text-slate-400">Detalla la mano de obra, repuestos y fecha del próximo cambio de aceite</p>
+        </div>
+        <button onclick="closeModal('modal-servicio')" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="serv-edit-id">
+
+      <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1 scrollbar-thin">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Placa de la Moto *</label>
+            <input type="text" id="s-placa" list="placas-datalist" onchange="autoFillMotoServicio()" placeholder="Escribe o elige placa" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono uppercase font-bold text-sm">
+            <datalist id="placas-datalist"></datalist>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Fecha del Servicio *</label>
+            <input type="date" id="s-fecha" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Kilometraje Actual *</label>
+            <input type="number" id="s-km" oninput="calcularSugerenciaAceite()" placeholder="Km al entrar" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+        </div>
+
+        <div id="s-moto-info" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs hidden"></div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Tipo de Trabajo Principal *</label>
+            <select id="s-tipo" onchange="calcularSugerenciaAceite()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+              <option value="Cambio de aceite">Cambio de aceite</option>
+              <option value="Mantenimiento general">Mantenimiento general</option>
+              <option value="Frenos">Frenos</option>
+              <option value="Transmisión">Transmisión / Kit de arrastre</option>
+              <option value="Eléctrico">Sistema Eléctrico / Batería</option>
+              <option value="Llantas">Llantas / Suspensión</option>
+              <option value="Motor">Ajuste de Motor</option>
+              <option value="Otro">Otro servicio</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Estado de la Orden</label>
+            <select id="s-estado" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold">
+              <option value="Entregada">✅ Entregada y Finalizada</option>
+              <option value="Lista">🔔 Lista para Entrega</option>
+              <option value="En Proceso">⚙️ En Proceso en Taller</option>
+              <option value="Esperando Repuestos">📦 Esperando Repuestos</option>
+              <option value="Recibida">📥 Recibida / Por Iniciar</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Diagnóstico / Observaciones Técnicas</label>
+          <textarea id="s-obs" rows="2" placeholder="Detalles de lo revisado, ajustes o recomendaciones..." class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"></textarea>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-calculator text-brand-600"></i> Desglose Económico
+            </span>
+            <button type="button" onclick="agregarLineaRepuesto()" class="text-xs text-brand-600 dark:text-brand-400 font-bold hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i> Añadir Repuesto
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Valor Mano de Obra</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">$</span>
+                <input type="number" id="s-mano-obra" oninput="calcularTotalServicioModal()" min="0" placeholder="0" class="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Descuento (Opcional)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">$</span>
+                <input type="number" id="s-descuento" oninput="calcularTotalServicioModal()" min="0" placeholder="0" class="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1.5">Repuestos e Insumos Utilizados:</label>
+            <div id="s-repuestos-container" class="space-y-2"></div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm">
+            <span class="text-xs text-slate-400">Total a Pagar por el Cliente:</span>
+            <span class="text-lg font-black text-slate-900 dark:text-white" id="s-total-preview">$0</span>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-oil-can"></i> Proyección del Próximo Aceite
+            </span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] text-slate-500">Tipo Aceite:</span>
+              <select id="s-oil-preset" onchange="aplicarPresetAceite()" class="text-xs py-1 px-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-800">
+                <option value="mineral">Mineral (+2,000 km / 3m)</option>
+                <option value="semi" selected>Semisintético (+3,500 km / 4m)</option>
+                <option value="sintetico">100% Sintético (+5,000 km / 6m)</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Próximo Cambio (Km)</label>
+              <input type="number" id="s-pkm" placeholder="Ej: 28500" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">Próxima Fecha Estimada</label>
+              <input type="date" id="s-pfe" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <button onclick="closeModal('modal-servicio')" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+        <button onclick="guardarServicioModal()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow">Guardar Servicio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL REPUESTO -->
+  <div id="modal-repuesto" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-8">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="font-extrabold text-lg text-slate-900 dark:text-white" id="modal-rep-title">Nuevo Repuesto</h3>
+          <p class="text-xs text-slate-400">Control de existencias y precios</p>
+        </div>
+        <button onclick="closeModal('modal-repuesto')" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="rep-edit-id">
+
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Código / SKU *</label>
+            <input type="text" id="r-codigo" placeholder="ACE-10W40" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-mono uppercase">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Categoría</label>
+            <select id="r-cat" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+              <option value="Aceites y Lubricantes">Aceites y Lubricantes</option>
+              <option value="Frenos">Frenos</option>
+              <option value="Filtros">Filtros</option>
+              <option value="Transmisión">Transmisión</option>
+              <option value="Eléctrico">Eléctrico</option>
+              <option value="Llantas y Neumáticos">Llantas y Neumáticos</option>
+              <option value="Varios">Varios</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Descripción / Nombre del Repuesto *</label>
+          <input type="text" id="r-nombre" placeholder="Aceite Motul 5100 15W50 1L" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Stock Actual *</label>
+            <input type="number" id="r-stock" min="0" placeholder="10" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Stock Mínimo (Alerta)</label>
+            <input type="number" id="r-min" min="0" placeholder="3" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Precio Costo ($) *</label>
+            <input type="number" id="r-costo" min="0" placeholder="35000" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">Precio Venta ($) *</label>
+            <input type="number" id="r-venta" min="0" placeholder="48000" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <button onclick="closeModal('modal-repuesto')" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+        <button onclick="guardarRepuestoModal()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow">Guardar Repuesto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RECIBO -->
+  <div id="modal-recibo" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 text-slate-900 shadow-2xl space-y-4 my-8 border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 no-print">
+        <div class="flex items-center gap-2">
+          <button onclick="imprimirRecibo()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow">
+            <i class="fa-solid fa-print"></i> Imprimir / PDF
+          </button>
+          <button onclick="compartirReciboWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow">
+            <i class="fa-brands fa-whatsapp text-sm"></i> Enviar WhatsApp
+          </button>
+        </div>
+        <button onclick="closeModal('modal-recibo')" class="p-2 text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="print-area" class="space-y-4 font-sans text-xs sm:text-sm">
+        <div class="text-center pb-3 border-b border-dashed border-slate-300">
+          <div class="text-xl font-black tracking-tight" id="rc-taller-nombre">MOTO TECH TALLER</div>
+          <div class="text-xs text-slate-600" id="rc-taller-ruc">NIT / RUC: 900.123.456-7</div>
+          <div class="text-xs text-slate-600" id="rc-taller-dir">Dirección: Calle Principal #12-34</div>
+          <div class="text-xs text-slate-600" id="rc-taller-tel">Tel: +57 300 123 4567</div>
+          <div class="mt-2 inline-block px-3 py-1 bg-slate-100 rounded-md font-bold text-xs uppercase" id="rc-num-ot">ORDEN DE SERVICIO #OT-0001</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs py-2 border-b border-slate-200">
+          <div>
+            <div><b>Cliente:</b> <span id="rc-cliente">-</span></div>
+            <div><b>Teléfono:</b> <span id="rc-tel">-</span></div>
+            <div><b>Fecha:</b> <span id="rc-fecha">-</span></div>
+          </div>
+          <div>
+            <div><b>Placa:</b> <span id="rc-placa" class="font-bold text-sm">-</span></div>
+            <div><b>Moto:</b> <span id="rc-moto">-</span></div>
+            <div><b>Km Entrada:</b> <span id="rc-km">-</span></div>
+          </div>
+        </div>
+
+        <div class="py-2 border-b border-slate-200">
+          <div><b>Tipo de Servicio:</b> <span id="rc-tipo" class="font-bold">-</span></div>
+          <div class="mt-1 text-slate-700"><b>Detalles / Observaciones:</b> <span id="rc-obs">-</span></div>
+        </div>
+
+        <div class="py-2">
+          <div class="font-bold mb-2">Desglose de Conceptos:</div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-slate-300 text-left font-bold text-slate-600">
+                <th class="py-1">Descripción</th>
+                <th class="py-1 text-center">Cant.</th>
+                <th class="py-1 text-right">P. Unit.</th>
+                <th class="py-1 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody id="rc-items-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <div class="pt-2 border-t border-dashed border-slate-300 space-y-1 text-right">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Mano de Obra:</span>
+            <span id="rc-mano-obra" class="font-medium">$0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Repuestos e Insumos:</span>
+            <span id="rc-repuestos" class="font-medium">$0</span>
+          </div>
+          <div class="flex justify-between text-slate-500" id="rc-descuento-row">
+            <span>Descuento:</span>
+            <span id="rc-descuento">-$0</span>
+          </div>
+          <div class="flex justify-between text-base font-black pt-2 border-t border-slate-300">
+            <span>TOTAL A PAGAR:</span>
+            <span id="rc-total">$0</span>
+          </div>
+        </div>
+
+        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+          <b>Próximo Cambio de Aceite Sugerido:</b> <span id="rc-prox-aceite" class="font-semibold">-</span>
+        </div>
+
+        <div class="pt-6 grid grid-cols-2 gap-8 text-center text-xs">
+          <div class="border-t border-slate-400 pt-1">
+            <p class="font-bold">Firma del Taller / Mecánico</p>
+          </div>
+          <div class="border-t border-slate-400 pt-1">
+            <p class="font-bold">Firma Conforme del Cliente</p>
+          </div>
+        </div>
+
+        <div class="text-center text-[10px] text-slate-500 pt-2" id="rc-pie-mensaje">
+          Garantía de servicio por 30 días. ¡Gracias por confiar en nosotros!
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-3 border-t border-slate-200 no-print">
+        <button onclick="closeModal('modal-recibo')" class="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 font-semibold text-xs">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-20 lg:bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-sm opacity-0 pointer-events-none transition-all duration-300 translate-y-2">
+    <i id="toast-icon" class="fa-solid fa-check-circle text-emerald-400 text-base"></i>
+    <span id="toast-msg">Mensaje de notificación</span>
+  </div>
+
+  <!-- JS APP CORE CON INTEGRACIÓN DE GOOGLE SHEETS -->
+  <script>
+    const DB_KEY = 'mototech_pro_v2';
+    
+    let db = {
+      config: {
+        nombre: 'MOTO TECH TALLER',
+        ruc: 'NIT / RUC: 900.123.456-7',
+        tel: '+57 300 123 4567',
+        dir: 'Calle Principal #12-34',
+        moneda: '$',
+        pie: '¡Gracias por su preferencia! Garantía de 30 días.',
+        gsheetUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRC5xxaXyGyKHhr8idIGdLALdZIhEwn27Q_TtrFPpghGjReCvRAPr9XK-HNatd-ag/pubhtml',
+        gsheetAutoSync: true
+      },
+      motos: [],
+      servicios: [],
+      repuestos: []
+    };
+
+    let activeServiceIdForReceipt = null;
+
+    const DEFAULT_REPUESTOS = [
+      { id: 1, codigo: 'ACE-10W40-S', nombre: 'Aceite Semisintético 10W40 1L', categoria: 'Aceites y Lubricantes', stock: 12, min: 4, costo: 28000, venta: 42000 },
+      { id: 2, codigo: 'ACE-20W50-M', nombre: 'Aceite Mineral 20W50 1L', categoria: 'Aceites y Lubricantes', stock: 8, min: 3, costo: 20000, venta: 32000 },
+      { id: 3, codigo: 'ACE-10W40-FS', nombre: 'Aceite 100% Sintético 10W40 1L', categoria: 'Aceites y Lubricantes', stock: 6, min: 2, costo: 42000, venta: 60000 },
+      { id: 4, codigo: 'FIL-ACE-U', nombre: 'Filtro de Aceite Universal', categoria: 'Filtros', stock: 15, min: 5, costo: 8000, venta: 16000 },
+      { id: 5, codigo: 'PAS-FRE-DEL', nombre: 'Pastillas de Freno Delanteras', categoria: 'Frenos', stock: 7, min: 3, costo: 18000, venta: 32000 },
+      { id: 6, codigo: 'BUJ-NGK-CPR', nombre: 'Bujía NGK CPR8EA-9', categoria: 'Eléctrico', stock: 10, min: 4, costo: 12000, venta: 22000 },
+      { id: 7, codigo: 'KIT-ARR-150', nombre: 'Kit de Arrastre Reforzado 150cc', categoria: 'Transmisión', stock: 4, min: 2, costo: 75000, venta: 120000 }
+    ];
+
+    function initDatabase() {
+      try {
+        const stored = localStorage.getItem(DB_KEY);
+        if (stored) {
+          db = JSON.parse(stored);
+          if (!db.repuestos || !db.repuestos.length) db.repuestos = DEFAULT_REPUESTOS;
+          if (!db.config) db.config = {};
+          if (db.config.gsheetUrl === undefined) {
+            db.config.gsheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRC5xxaXyGyKHhr8idIGdLALdZIhEwn27Q_TtrFPpghGjReCvRAPr9XK-HNatd-ag/pubhtml';
+            db.config.gsheetAutoSync = true;
+          }
+        } else {
+          db.repuestos = DEFAULT_REPUESTOS;
+          saveDatabase();
+        }
+      } catch (err) {
+        console.error('Error loading db:', err);
+      }
+    }
+
+    function saveDatabase() {
+      try {
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+      } catch (e) {
+        console.error('Error saving db:', e);
+      }
+    }
+
+    function norm(p) { return String(p || '').toUpperCase().replace(/\s+/g, ''); }
+    function hoy() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function fmtFecha(f) {
+      if (!f) return '';
+      const p = f.split('-');
+      return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+    function diasHasta(f) {
+      if (!f) return 9999;
+      return Math.round((new Date(f + 'T00:00:00') - new Date(hoy() + 'T00:00:00')) / 864e5);
+    }
+    function formatMoney(amount) {
+      const sym = db.config.moneda || '$';
+      const num = Number(amount || 0);
+      return `${sym}${num.toLocaleString('es-CO')}`;
+    }
+
+    function showToast(message, icon = 'check-circle') {
+      const t = document.getElementById('toast');
+      const m = document.getElementById('toast-msg');
+      const i = document.getElementById('toast-icon');
+      m.textContent = message;
+      i.className = `fa-solid fa-${icon} text-emerald-400 text-base`;
+      t.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+      t.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        t.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+        t.classList.remove('opacity-100', 'translate-y-0');
+      }, 2600);
+    }
+
+    function navigate(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      const target = document.getElementById(`tab-${tabId}`);
+      if (target) target.classList.add('active');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tabId) {
+          btn.classList.add('bg-brand-50', 'text-brand-600', 'dark:bg-brand-950/40', 'dark:text-brand-400');
+          btn.classList.remove('text-slate-600', 'dark:text-slate-300');
+        } else {
+          btn.classList.remove('bg-brand-50', 'text-brand-600', 'dark:bg-brand-950/40', 'dark:text-brand-400');
+          btn.classList.add('text-slate-600', 'dark:text-slate-300');
+        }
+      });
+
+      document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tabId) {
+          btn.classList.add('text-brand-600', 'dark:text-brand-400', 'font-bold');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('text-brand-600', 'dark:text-brand-400', 'font-bold');
+          btn.classList.add('text-slate-400');
+        }
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      refreshUI();
+    }
+
+    function initTheme() {
+      const isDark = localStorage.getItem('mototech_theme') === 'dark' || 
+        (!localStorage.getItem('mototech_theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('theme-icon').className = 'fa-solid fa-sun text-amber-400';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('theme-icon').className = 'fa-solid fa-moon text-slate-500';
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('mototech_theme', isDark ? 'dark' : 'light');
+      document.getElementById('theme-icon').className = isDark ? 'fa-solid fa-sun text-amber-400' : 'fa-solid fa-moon text-slate-500';
+    }
+
+    function openModal(id) {
+      const m = document.getElementById(id);
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function getEstadoAceite(moto) {
+      const servs = db.servicios.filter(s => s.placa === moto.placa)
+        .sort((a,b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : b.id - a.id));
+      const s = servs.find(x => x.pkm || x.pfe);
+      if (!s) return { nivel: 0, texto: 'Sin servicio programado', serv: null };
+
+      let nivel = 0;
+      let msgs = [];
+
+      if (s.pfe) {
+        const d = diasHasta(s.pfe);
+        if (d < 0) {
+          nivel = 2;
+          msgs.push(`Fecha vencida hace ${-d} d (${fmtFecha(s.pfe)})`);
+        } else if (d <= 15) {
+          nivel = Math.max(nivel, 1);
+          msgs.push(`Faltan ${d} días (${fmtFecha(s.pfe)})`);
+        }
+      }
+
+      if (s.pkm) {
+        const diff = s.pkm - moto.km;
+        if (diff <= 0) {
+          nivel = 2;
+          msgs.push(`Pasado por ${-diff} km (Límite: ${s.pkm.toLocaleString()} km)`);
+        } else if (diff <= 300) {
+          nivel = Math.max(nivel, 1);
+          msgs.push(`Faltan ${diff} km (Límite: ${s.pkm.toLocaleString()} km)`);
+        }
+      }
+
+      return {
+        nivel,
+        texto: msgs.length ? msgs.join(' · ') : `Al día (${s.pkm ? s.pkm.toLocaleString() + ' km' : ''} / ${s.pfe ? fmtFecha(s.pfe) : ''})`,
+        serv: s
+      };
+    }
+
+    function refreshUI() {
+      updateBadgesAndDashboard();
+      renderMotosList();
+      renderServiciosList();
+      renderAlertasList();
+      renderInventario();
+      renderFinanzas();
+      loadConfigForm();
+      loadGSheetControls();
+      updateDatalistPlacas();
+    }
+
+    function updateBadgesAndDashboard() {
+      document.getElementById('badge-total-motos').textContent = db.motos.length;
+      document.getElementById('badge-total-servicios').textContent = db.servicios.length;
+      document.getElementById('stat-motos').textContent = db.motos.length;
+      document.getElementById('stat-servicios-total').textContent = `Total histórico: ${db.servicios.length}`;
+
+      const curYear = new Date().getFullYear();
+      const curMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+      const thisMonthPrefix = `${curYear}-${curMonth}`;
+
+      const mesServicios = db.servicios.filter(s => s.fecha && s.fecha.startsWith(thisMonthPrefix));
+      document.getElementById('stat-servicios-mes').textContent = mesServicios.length;
+
+      let ingresosMes = 0;
+      let gananciaMes = 0;
+      mesServicios.forEach(s => {
+        const tot = Number(s.total || 0);
+        ingresosMes += tot;
+        let costoPartes = 0;
+        (s.repuestosUsados || []).forEach(ru => {
+          costoPartes += (Number(ru.costo || 0) * Number(ru.cantidad || 1));
+        });
+        gananciaMes += (tot - costoPartes);
+      });
+      document.getElementById('stat-ingresos-mes').textContent = formatMoney(ingresosMes);
+      document.getElementById('stat-ganancia-mes').textContent = `Ganancia neta: ${formatMoney(gananciaMes)}`;
+
+      const alertas = db.motos.map(m => ({ m, st: getEstadoAceite(m) })).filter(x => x.st.nivel > 0);
+      document.getElementById('stat-alertas').textContent = alertas.length;
+      
+      const badgeSideAlts = document.getElementById('badge-sidebar-alertas');
+      const badgeMobAlts = document.getElementById('badge-mobile-alertas');
+      if (alertas.length) {
+        badgeSideAlts.classList.remove('hidden');
+        badgeSideAlts.textContent = alertas.length;
+        badgeMobAlts.classList.remove('hidden');
+        badgeMobAlts.textContent = alertas.length;
+      } else {
+        badgeSideAlts.classList.add('hidden');
+        badgeMobAlts.classList.add('hidden');
+      }
+
+      const lowStock = db.repuestos.filter(r => Number(r.stock) <= Number(r.min));
+      const badgeSideInv = document.getElementById('badge-sidebar-inventario');
+      if (lowStock.length) {
+        badgeSideInv.classList.remove('hidden');
+        badgeSideInv.textContent = lowStock.length;
+      } else {
+        badgeSideInv.classList.add('hidden');
+      }
+
+      const recentContainer = document.getElementById('dash-recent-services');
+      const sortedServs = [...db.servicios].sort((a,b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : b.id - a.id)).slice(0, 5);
+      if (!sortedServs.length) {
+        recentContainer.innerHTML = '<div class="text-xs text-slate-400 py-3 text-center">No hay servicios registrados aún.</div>';
+      } else {
+        recentContainer.innerHTML = sortedServs.map(s => {
+          const m = db.motos.find(x => x.placa === s.placa);
+          return `
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400 flex items-center justify-center font-bold">
+                  <i class="fa-solid fa-wrench"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-slate-900 dark:text-white">${esc(s.placa)} · <span class="font-normal text-slate-500">${m ? esc(m.cliente) : 'Cliente'}</span></div>
+                  <div class="text-slate-400">${esc(s.tipo)} · ${fmtFecha(s.fecha)}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="font-black text-slate-800 dark:text-white">${formatMoney(s.total)}</div>
+                <button onclick="verRecibo(${s.id})" class="text-[11px] text-brand-600 dark:text-brand-400 font-semibold hover:underline">Ver Recibo</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const alertsContainer = document.getElementById('dash-urgent-alerts');
+      const urgentList = alertas.sort((a,b) => b.st.nivel - a.st.nivel).slice(0, 3);
+      if (!urgentList.length) {
+        alertsContainer.innerHTML = '<div class="text-xs text-emerald-600 dark:text-emerald-400 py-2">✅ Todos los mantenimientos están al día.</div>';
+      } else {
+        alertsContainer.innerHTML = urgentList.map(item => `
+          <div class="p-2.5 rounded-xl border ${item.st.nivel === 2 ? 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/20' : 'border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20'} text-xs">
+            <div class="flex items-center justify-between font-bold mb-1">
+              <span>${esc(item.m.placa)} (${esc(item.m.modelo || item.m.marca || 'Moto')})</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full ${item.st.nivel === 2 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'}">${item.st.nivel === 2 ? 'VENCIDO' : 'PRÓXIMO'}</span>
+            </div>
+            <div class="text-slate-500 dark:text-slate-400 text-[11px]">${esc(item.st.texto)}</div>
+            <div class="mt-2 flex justify-end">
+              <button onclick="enviarWhatsAppAlerta('${item.m.placa}')" class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 hover:underline">
+                <i class="fa-brands fa-whatsapp"></i> Avisar a ${esc(item.m.cliente)}
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      const stockContainer = document.getElementById('dash-low-stock');
+      if (!lowStock.length) {
+        stockContainer.innerHTML = '<div class="text-xs text-slate-400 py-2">✅ Inventario con niveles óptimos.</div>';
+      } else {
+        stockContainer.innerHTML = lowStock.slice(0, 3).map(r => `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-xs">
+            <div>
+              <div class="font-bold text-slate-800 dark:text-slate-200">${esc(r.nombre)}</div>
+              <div class="text-[10px] text-slate-400 font-mono">${esc(r.codigo)}</div>
+            </div>
+            <div class="text-right">
+              <span class="text-xs font-black text-amber-600 dark:text-amber-400">${r.stock} u.</span>
+              <span class="text-[10px] text-slate-400 block">Mín: ${r.min}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderMotosList() {
+      const q = (document.getElementById('search-motos')?.value || '').trim().toLowerCase();
+      const filtro = document.getElementById('filter-oil-status')?.value || 'all';
+      const container = document.getElementById('motos-list');
+
+      let list = db.motos.filter(m => {
+        const textMatch = !q || 
+          m.placa.toLowerCase().includes(q) || 
+          (m.cliente && m.cliente.toLowerCase().includes(q)) || 
+          (m.modelo && m.modelo.toLowerCase().includes(q)) ||
+          (m.marca && m.marca.toLowerCase().includes(q));
+        return textMatch;
+      });
+
+      if (filtro !== 'all') {
+        list = list.filter(m => {
+          const st = getEstadoAceite(m);
+          if (filtro === 'vencido') return st.nivel === 2;
+          if (filtro === 'proximo') return st.nivel === 1;
+          if (filtro === 'aldia') return st.nivel === 0;
+          return true;
+        });
+      }
+
+      if (!list.length) {
+        container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-400 text-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">No se encontraron motocicletas con ese criterio.</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(m => {
+        const st = getEstadoAceite(m);
+        const telClean = (m.tel || '').replace(/[^\d+]/g, '');
+        const servs = db.servicios.filter(s => s.placa === m.placa);
+
+        let badgePill = '<span class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">Al día</span>';
+        if (st.nivel === 2) {
+          badgePill = '<span class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 animate-pulse">VENCIDO</span>';
+        } else if (st.nivel === 1) {
+          badgePill = '<span class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">PRÓXIMO</span>';
+        }
+
+        return `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
+            <div>
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="font-mono font-black text-xl tracking-wider text-slate-900 dark:text-white">${esc(m.placa)}</div>
+                  <div class="text-sm font-semibold text-slate-700 dark:text-slate-300">${esc(m.marca ? m.marca + ' ' : '')}${esc(m.modelo || 'Motocicleta')}</div>
+                </div>
+                ${badgePill}
+              </div>
+
+              <div class="mt-2.5 space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <div class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-user w-4 text-slate-400"></i>
+                  <span class="font-medium text-slate-700 dark:text-slate-200">${esc(m.cliente)}</span>
+                  ${m.tel ? `· <a href="https://wa.me/${esc(telClean.replace('+',''))}" target="_blank" class="text-emerald-600 font-bold hover:underline flex items-center gap-0.5"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ''}
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-gauge-high w-4 text-slate-400"></i>
+                  <span>Km Actual: <b class="text-slate-700 dark:text-slate-200">${(m.km || 0).toLocaleString()} km</b></span>
+                </div>
+                ${st.texto ? `
+                  <div class="flex items-center gap-1.5 pt-1">
+                    <i class="fa-solid fa-oil-can w-4 text-amber-500"></i>
+                    <span class="${st.nivel === 2 ? 'text-red-500 font-bold' : st.nivel === 1 ? 'text-amber-500 font-semibold' : 'text-slate-500'}">${esc(st.texto)}</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <span class="text-slate-400">${servs.length} servicio(s)</span>
+              <div class="flex items-center gap-2">
+                <button onclick="nuevoServicioConPlaca('${esc(m.placa)}')" class="bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-950/40 dark:hover:bg-brand-900/60 dark:text-brand-400 px-3 py-1.5 rounded-lg font-bold transition">
+                  + Servicio
+                </button>
+                <button onclick="editarMoto('${esc(m.placa)}')" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white" title="Editar">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="borrarMoto('${esc(m.placa)}')" class="p-1.5 text-red-400 hover:text-red-600" title="Eliminar">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderServiciosList() {
+      const q = (document.getElementById('search-servicios')?.value || '').trim().toLowerCase();
+      const tipoFiltro = document.getElementById('filter-servicio-tipo')?.value || 'all';
+      const container = document.getElementById('servicios-list');
+
+      let list = [...db.servicios].sort((a,b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : b.id - a.id));
+
+      if (q) {
+        list = list.filter(s => {
+          const m = db.motos.find(x => x.placa === s.placa);
+          return s.placa.toLowerCase().includes(q) || 
+            (m && m.cliente.toLowerCase().includes(q)) ||
+            (s.obs && s.obs.toLowerCase().includes(q));
+        });
+      }
+
+      if (tipoFiltro !== 'all') {
+        list = list.filter(s => s.tipo === tipoFiltro);
+      }
+
+      if (!list.length) {
+        container.innerHTML = '<div class="py-12 text-center text-slate-400 text-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">No hay órdenes de servicio con ese criterio.</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(s => {
+        const m = db.motos.find(x => x.placa === s.placa);
+        const repCount = (s.repuestosUsados || []).length;
+
+        return `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="space-y-1.5 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-mono font-black text-base text-slate-900 dark:text-white px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">${esc(s.placa)}</span>
+                <span class="font-bold text-sm text-slate-800 dark:text-slate-200">${esc(s.tipo)}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium ${s.estado === 'Entregada' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'}">${esc(s.estado || 'Entregada')}</span>
+              </div>
+
+              <div class="text-xs text-slate-500 dark:text-slate-400">
+                <span>Cliente: <b>${m ? esc(m.cliente) : 'Cliente'}</b></span> · 
+                <span>Fecha: ${fmtFecha(s.fecha)}</span> · 
+                <span>Km: ${(s.km || 0).toLocaleString()}</span>
+                ${repCount ? ` · <span class="text-brand-600 dark:text-brand-400 font-semibold">${repCount} repuesto(s)</span>` : ''}
+              </div>
+
+              ${s.obs ? `<p class="text-xs text-slate-600 dark:text-slate-300 italic bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xl">${esc(s.obs)}</p>` : ''}
+              
+              ${(s.pkm || s.pfe) ? `
+                <div class="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  <i class="fa-solid fa-oil-can"></i> Próx. Aceite: ${s.pkm ? s.pkm.toLocaleString() + ' km' : ''} ${s.pkm && s.pfe ? ' / ' : ''} ${s.pfe ? fmtFecha(s.pfe) : ''}
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 dark:border-slate-800 shrink-0">
+              <div class="text-lg font-black text-slate-900 dark:text-white mb-1">${formatMoney(s.total)}</div>
+              <div class="flex items-center gap-2">
+                <button onclick="verRecibo(${s.id})" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-print"></i> Recibo
+                </button>
+                <button onclick="editarServicio(${s.id})" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white" title="Editar">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="borrarServicio(${s.id})" class="p-1.5 text-red-400 hover:text-red-600" title="Eliminar">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAlertasList() {
+      const container = document.getElementById('alertas-list');
+      const list = db.motos.map(m => ({ m, st: getEstadoAceite(m) }))
+        .filter(x => x.st.nivel > 0)
+        .sort((a,b) => b.st.nivel - a.st.nivel);
+
+      if (!list.length) {
+        container.innerHTML = '<div class="col-span-full py-12 text-center text-emerald-600 dark:text-emerald-400 text-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">✅ ¡Excelente! No hay motocicletas con mantenimiento de aceite pendiente.</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(item => {
+        const m = item.m;
+        const st = item.st;
+        const telClean = (m.tel || '').replace(/[^\d+]/g, '');
+
+        return `
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border ${st.nivel === 2 ? 'border-red-300 dark:border-red-900/60' : 'border-amber-300 dark:border-amber-900/60'} shadow-sm space-y-3">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="font-mono font-black text-xl tracking-wider text-slate-900 dark:text-white">${esc(m.placa)}</div>
+                <div class="text-sm font-semibold text-slate-700 dark:text-slate-300">${esc(m.marca ? m.marca + ' ' : '')}${esc(m.modelo || 'Moto')}</div>
+              </div>
+              <span class="text-xs px-2.5 py-0.5 rounded-full font-bold ${st.nivel === 2 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'}">
+                ${st.nivel === 2 ? 'VENCIDO' : 'PRÓXIMO'}
+              </span>
+            </div>
+
+            <div class="p-3 rounded-xl ${st.nivel === 2 ? 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300' : 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300'} text-xs font-semibold">
+              <i class="fa-solid fa-triangle-exclamation mr-1"></i> ${esc(st.texto)}
+            </div>
+
+            <div class="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+              <div>Cliente: <b>${esc(m.cliente)}</b></div>
+              <div>Teléfono: <b>${esc(m.tel || 'No registrado')}</b></div>
+              <div>Kilometraje actual registrado: <b>${(m.km || 0).toLocaleString()} km</b></div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <button onclick="nuevoServicioConPlaca('${esc(m.placa)}')" class="bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow">
+                + Realizar Servicio
+              </button>
+              ${m.tel ? `
+                <button onclick="enviarWhatsAppAlerta('${esc(m.placa)}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow">
+                  <i class="fa-brands fa-whatsapp text-sm"></i> Notificar Cliente
+                </button>
+              ` : '<span class="text-xs text-slate-400">Sin teléfono</span>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderInventario() {
+      const q = (document.getElementById('search-repuestos')?.value || '').trim().toLowerCase();
+      const cat = document.getElementById('filter-repuesto-cat')?.value || 'all';
+      const tbody = document.getElementById('inventario-tbody');
+
+      let list = db.repuestos || [];
+
+      if (q) {
+        list = list.filter(r => r.codigo.toLowerCase().includes(q) || r.nombre.toLowerCase().includes(q));
+      }
+
+      if (cat !== 'all') {
+        list = list.filter(r => r.categoria === cat);
+      }
+
+      let totalItems = 0;
+      let totalCosto = 0;
+      let totalVenta = 0;
+      (db.repuestos || []).forEach(r => {
+        const stk = Number(r.stock || 0);
+        totalItems += stk;
+        totalCosto += stk * Number(r.costo || 0);
+        totalVenta += stk * Number(r.venta || 0);
+      });
+
+      document.getElementById('inv-total-items').textContent = totalItems;
+      document.getElementById('inv-total-costo').textContent = formatMoney(totalCosto);
+      document.getElementById('inv-total-venta').textContent = formatMoney(totalVenta);
+
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400 text-xs">No hay repuestos registrados con ese filtro.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(r => {
+        const isLow = Number(r.stock) <= Number(r.min);
+        return `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+            <td class="px-4 py-3 font-mono font-bold text-xs text-slate-800 dark:text-slate-200">${esc(r.codigo)}</td>
+            <td class="px-4 py-3 font-semibold text-slate-900 dark:text-white">${esc(r.nombre)}</td>
+            <td class="px-4 py-3 text-xs text-slate-500">${esc(r.categoria)}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="inline-flex items-center gap-1 font-bold ${isLow ? 'text-red-500 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-md' : 'text-slate-800 dark:text-slate-200'}">
+                ${isLow ? '<i class="fa-solid fa-triangle-exclamation text-[10px]"></i>' : ''} ${r.stock}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right text-xs text-slate-500">${formatMoney(r.costo)}</td>
+            <td class="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">${formatMoney(r.venta)}</td>
+            <td class="px-4 py-3 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="ajustarStock(${r.id}, 1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold" title="Aumentar stock">+1</button>
+                <button onclick="ajustarStock(${r.id}, -1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold" title="Reducir stock">-1</button>
+                <button onclick="editarRepuesto(${r.id})" class="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button onclick="borrarRepuesto(${r.id})" class="p-1 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderFinanzas() {
+      let totalIngresos = 0;
+      let totalCostos = 0;
+      let breakdown = {};
+
+      db.servicios.forEach(s => {
+        const tot = Number(s.total || 0);
+        totalIngresos += tot;
+        let c = 0;
+        (s.repuestosUsados || []).forEach(ru => {
+          c += (Number(ru.costo || 0) * Number(ru.cantidad || 1));
+        });
+        totalCostos += c;
+
+        const cat = s.tipo || 'Otros';
+        breakdown[cat] = (breakdown[cat] || 0) + tot;
+      });
+
+      const ganancia = totalIngresos - totalCostos;
+      document.getElementById('fin-ingresos-total').textContent = formatMoney(totalIngresos);
+      document.getElementById('fin-costos-total').textContent = formatMoney(totalCostos);
+      document.getElementById('fin-ganancia-total').textContent = formatMoney(ganancia);
+
+      const bdContainer = document.getElementById('finanzas-breakdown');
+      const cats = Object.keys(breakdown);
+      if (!cats.length) {
+        bdContainer.innerHTML = '<div class="text-xs text-slate-400 py-3">No hay datos suficientes para generar estadísticas.</div>';
+        return;
+      }
+
+      bdContainer.innerHTML = cats.map(cat => {
+        const amount = breakdown[cat];
+        const pct = totalIngresos > 0 ? Math.round((amount / totalIngresos) * 100) : 0;
+        return `
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-slate-700 dark:text-slate-200">${esc(cat)}</span>
+              <span>${formatMoney(amount)} (${pct}%)</span>
+            </div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+              <div class="bg-brand-600 h-2.5 rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateDatalistPlacas() {
+      const dl = document.getElementById('placas-datalist');
+      if (!dl) return;
+      dl.innerHTML = db.motos.map(m => `<option value="${esc(m.placa)}">${esc(m.cliente)} - ${esc(m.modelo || '')}</option>`).join('');
+    }
+
+    function openModalMoto(placaParaEditar = null) {
+      document.getElementById('modal-moto-title').textContent = placaParaEditar ? 'Editar Moto y Cliente' : 'Registrar Moto y Cliente';
+      document.getElementById('moto-edit-orig-placa').value = placaParaEditar || '';
+
+      if (placaParaEditar) {
+        const m = db.motos.find(x => x.placa === placaParaEditar);
+        if (m) {
+          document.getElementById('m-placa').value = m.placa;
+          document.getElementById('m-placa').disabled = true;
+          document.getElementById('m-km').value = m.km || 0;
+          document.getElementById('m-marca').value = m.marca || '';
+          document.getElementById('m-modelo').value = m.modelo || '';
+          document.getElementById('m-ano').value = m.ano || '';
+          document.getElementById('m-color').value = m.color || '';
+          document.getElementById('m-cliente').value = m.cliente || '';
+          document.getElementById('m-tel').value = m.tel || '';
+          document.getElementById('m-doc').value = m.doc || '';
+          document.getElementById('m-notas').value = m.notas || '';
+        }
+      } else {
+        document.getElementById('m-placa').disabled = false;
+        ['m-placa', 'm-km', 'm-marca', 'm-modelo', 'm-ano', 'm-color', 'm-cliente', 'm-tel', 'm-doc', 'm-notas'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+      }
+      openModal('modal-moto');
+    }
+
+    function editarMoto(placa) { openModalMoto(placa); }
+
+    function guardarMotoModal() {
+      const placa = norm(document.getElementById('m-placa').value);
+      const cliente = document.getElementById('m-cliente').value.trim();
+      const tel = document.getElementById('m-tel').value.trim();
+      const km = Number(document.getElementById('m-km').value) || 0;
+
+      if (!placa || !cliente) {
+        showToast('Debes ingresar la placa y el nombre del cliente', 'triangle-exclamation');
+        return;
+      }
+
+      const origPlaca = document.getElementById('moto-edit-orig-placa').value;
+      const targetPlaca = origPlaca || placa;
+
+      const motoObj = {
+        placa: targetPlaca,
+        cliente,
+        tel,
+        km,
+        marca: document.getElementById('m-marca').value.trim(),
+        modelo: document.getElementById('m-modelo').value.trim(),
+        ano: document.getElementById('m-ano').value.trim(),
+        color: document.getElementById('m-color').value.trim(),
+        doc: document.getElementById('m-doc').value.trim(),
+        notas: document.getElementById('m-notas').value.trim()
+      };
+
+      const idx = db.motos.findIndex(x => x.placa === targetPlaca);
+      if (idx >= 0) {
+        db.motos[idx] = motoObj;
+        showToast('Moto actualizada correctamente');
+      } else {
+        db.motos.push(motoObj);
+        showToast('Moto registrada con éxito');
+      }
+
+      saveDatabase();
+      closeModal('modal-moto');
+      refreshUI();
+    }
+
+    function borrarMoto(placa) {
+      if (!confirm(`¿Eliminar la moto con placa ${placa} y todos sus registros de servicio asociados?`)) return;
+      db.motos = db.motos.filter(m => m.placa !== placa);
+      db.servicios = db.servicios.filter(s => s.placa !== placa);
+      saveDatabase();
+      refreshUI();
+      showToast('Moto y sus historiales eliminados');
+    }
+
+    function openModalServicio(servicioId = null) {
+      document.getElementById('modal-serv-title').textContent = servicioId ? 'Editar Orden de Servicio' : 'Nueva Orden de Servicio';
+      document.getElementById('serv-edit-id').value = servicioId || '';
+      document.getElementById('s-repuestos-container').innerHTML = '';
+
+      if (servicioId) {
+        const s = db.servicios.find(x => x.id === Number(servicioId));
+        if (s) {
+          document.getElementById('s-placa').value = s.placa;
+          document.getElementById('s-fecha').value = s.fecha;
+          document.getElementById('s-km').value = s.km;
+          document.getElementById('s-tipo').value = s.tipo;
+          document.getElementById('s-estado').value = s.estado || 'Entregada';
+          document.getElementById('s-obs').value = s.obs || '';
+          document.getElementById('s-mano-obra').value = s.manoObra || 0;
+          document.getElementById('s-descuento').value = s.descuento || 0;
+          document.getElementById('s-pkm').value = s.pkm || '';
+          document.getElementById('s-pfe').value = s.pfe || '';
+
+          (s.repuestosUsados || []).forEach(ru => {
+            agregarLineaRepuesto(ru.repuestoId, ru.nombre, ru.cantidad, ru.precioVenta, ru.costo);
+          });
+        }
+      } else {
+        document.getElementById('s-placa').value = '';
+        document.getElementById('s-fecha').value = hoy();
+        document.getElementById('s-km').value = '';
+        document.getElementById('s-tipo').value = 'Cambio de aceite';
+        document.getElementById('s-estado').value = 'Entregada';
+        document.getElementById('s-obs').value = '';
+        document.getElementById('s-mano-obra').value = '0';
+        document.getElementById('s-descuento').value = '0';
+        document.getElementById('s-pkm').value = '';
+        document.getElementById('s-pfe').value = '';
+        document.getElementById('s-oil-preset').value = 'semi';
+      }
+
+      autoFillMotoServicio();
+      calcularTotalServicioModal();
+      openModal('modal-servicio');
+    }
+
+    function nuevoServicioConPlaca(placa) {
+      openModalServicio();
+      document.getElementById('s-placa').value = placa;
+      autoFillMotoServicio();
+      calcularSugerenciaAceite();
+    }
+
+    function autoFillMotoServicio() {
+      const pla = norm(document.getElementById('s-placa').value);
+      const m = db.motos.find(x => x.placa === pla);
+      const infoBox = document.getElementById('s-moto-info');
+      if (m) {
+        infoBox.classList.remove('hidden');
+        infoBox.innerHTML = `<b>Cliente:</b> ${esc(m.cliente)} · <b>Tel:</b> ${esc(m.tel || 'S/N')} · <b>Modelo:</b> ${esc(m.marca || '')} ${esc(m.modelo || '')} · <b>Km Registrado:</b> ${(m.km || 0).toLocaleString()} km`;
+        if (!document.getElementById('s-km').value) {
+          document.getElementById('s-km').value = m.km || 0;
+          calcularSugerenciaAceite();
+        }
+      } else {
+        infoBox.classList.add('hidden');
+      }
+    }
+
+    function aplicarPresetAceite() {
+      const preset = document.getElementById('s-oil-preset').value;
+      const kmActual = Number(document.getElementById('s-km').value) || 0;
+      const fec = document.getElementById('s-fecha').value || hoy();
+
+      if (preset === 'custom') return;
+
+      let addKm = 3500;
+      let addMeses = 4;
+      if (preset === 'mineral') { addKm = 2000; addMeses = 3; }
+      else if (preset === 'sintetico') { addKm = 5000; addMeses = 6; }
+
+      if (kmActual > 0) {
+        document.getElementById('s-pkm').value = kmActual + addKm;
+      }
+      
+      const d = new Date(fec + 'T00:00:00');
+      d.setMonth(d.getMonth() + addMeses);
+      const nextDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      document.getElementById('s-pfe').value = nextDate;
+    }
+
+    function calcularSugerenciaAceite() {
+      const tipo = document.getElementById('s-tipo').value;
+      if (tipo === 'Cambio de aceite' || tipo === 'Mantenimiento general') {
+        aplicarPresetAceite();
+      }
+    }
+
+    function agregarLineaRepuesto(id = '', nombre = '', cant = 1, venta = 0, costo = 0) {
+      const container = document.getElementById('s-repuestos-container');
+      const div = document.createElement('div');
+      div.className = 'grid grid-cols-12 gap-2 items-center text-xs p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 repuesto-line';
+
+      const selectOpts = (db.repuestos || []).map(r => `
+        <option value="${r.id}" data-nombre="${esc(r.nombre)}" data-venta="${r.venta}" data-costo="${r.costo}" data-stock="${r.stock}" ${r.id == id ? 'selected' : ''}>
+          ${esc(r.codigo)} - ${esc(r.nombre)} (Stock: ${r.stock}) - ${formatMoney(r.venta)}
+        </option>
+      `).join('');
+
+      div.innerHTML = `
+        <div class="col-span-6 sm:col-span-6">
+          <select onchange="onSelectRepuestoInLine(this)" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium sel-rep-id">
+            <option value="">-- Repuesto de Inventario o Manual --</option>
+            ${selectOpts}
+            <option value="custom" ${!id && nombre ? 'selected' : ''}>Personalizado / Externo</option>
+          </select>
+          <input type="text" placeholder="Nombre si es externo" value="${esc(nombre)}" class="w-full mt-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs inp-rep-nombre ${id ? 'hidden' : ''}">
+        </div>
+        <div class="col-span-2">
+          <input type="number" min="1" value="${cant}" oninput="calcularTotalServicioModal()" placeholder="Cant" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs text-center inp-rep-cant font-bold">
+        </div>
+        <div class="col-span-3">
+          <input type="number" min="0" value="${venta}" oninput="calcularTotalServicioModal()" placeholder="P. Venta" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-right inp-rep-venta">
+          <input type="hidden" value="${costo}" class="inp-rep-costo">
+        </div>
+        <div class="col-span-1 text-center">
+          <button type="button" onclick="this.closest('.repuesto-line').remove(); calcularTotalServicioModal();" class="text-red-500 hover:text-red-700 p-1">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `;
+      container.appendChild(div);
+      calcularTotalServicioModal();
+    }
+
+    function onSelectRepuestoInLine(selectEl) {
+      const line = selectEl.closest('.repuesto-line');
+      const opt = selectEl.options[selectEl.selectedIndex];
+      const nameInput = line.querySelector('.inp-rep-nombre');
+      const ventaInput = line.querySelector('.inp-rep-venta');
+      const costoInput = line.querySelector('.inp-rep-costo');
+
+      if (selectEl.value === 'custom' || !selectEl.value) {
+        nameInput.classList.remove('hidden');
+        ventaInput.value = '';
+        costoInput.value = '0';
+      } else {
+        nameInput.classList.add('hidden');
+        nameInput.value = opt.dataset.nombre || '';
+        ventaInput.value = opt.dataset.venta || 0;
+        costoInput.value = opt.dataset.costo || 0;
+      }
+      calcularTotalServicioModal();
+    }
+
+    function calcularTotalServicioModal() {
+      const manoObra = Number(document.getElementById('s-mano-obra')?.value || 0);
+      const descuento = Number(document.getElementById('s-descuento')?.value || 0);
+      let repuestosTotal = 0;
+
+      document.querySelectorAll('.repuesto-line').forEach(line => {
+        const cant = Number(line.querySelector('.inp-rep-cant')?.value || 1);
+        const venta = Number(line.querySelector('.inp-rep-venta')?.value || 0);
+        repuestosTotal += (cant * venta);
+      });
+
+      const total = Math.max(0, manoObra + repuestosTotal - descuento);
+      const preview = document.getElementById('s-total-preview');
+      if (preview) preview.textContent = formatMoney(total);
+      return { manoObra, repuestosTotal, descuento, total };
+    }
+
+    function guardarServicioModal() {
+      const placa = norm(document.getElementById('s-placa').value);
+      if (!placa) {
+        showToast('Ingresa la placa de la motocicleta', 'triangle-exclamation');
+        return;
+      }
+
+      let moto = db.motos.find(x => x.placa === placa);
+      if (!moto) {
+        moto = { placa, cliente: 'Cliente General', tel: '', km: Number(document.getElementById('s-km').value) || 0 };
+        db.motos.push(moto);
+      }
+
+      const km = Number(document.getElementById('s-km').value) || 0;
+      if (km > (moto.km || 0)) {
+        moto.km = km;
+      }
+
+      const servId = document.getElementById('serv-edit-id').value;
+      const calc = calcularTotalServicioModal();
+      const existingService = servId ? db.servicios.find(s => s.id === Number(servId)) : null;
+
+      // Restaurar stock de repuestos previamente asignados al editar
+      if (existingService && existingService.repuestosUsados) {
+        existingService.repuestosUsados.forEach(ru => {
+          if (ru.repuestoId) {
+            const item = db.repuestos.find(r => r.id === ru.repuestoId);
+            if (item) {
+              item.stock = Number(item.stock || 0) + Number(ru.cantidad || 0);
+            }
+          }
+        });
+      }
+
+      const repuestosUsados = [];
+      document.querySelectorAll('.repuesto-line').forEach(line => {
+        const sel = line.querySelector('.sel-rep-id');
+        const repId = sel.value && sel.value !== 'custom' ? Number(sel.value) : null;
+        let nombre = line.querySelector('.inp-rep-nombre').value.trim();
+        const cant = Number(line.querySelector('.inp-rep-cant').value || 1);
+
+        if (repId) {
+          const item = db.repuestos.find(r => r.id === repId);
+          if (item) {
+            nombre = item.nombre;
+            item.stock = Math.max(0, Number(item.stock || 0) - cant);
+          }
+        }
+        repuestosUsados.push({
+          repuestoId: repId,
+          nombre: nombre || 'Repuesto',
+          cantidad: cant,
+          precioVenta: Number(line.querySelector('.inp-rep-venta').value || 0),
+          costo: Number(line.querySelector('.inp-rep-costo').value || 0)
+        });
+      });
+
+      const serviceObj = {
+        id: servId ? Number(servId) : Date.now(),
+        placa,
+        fecha: document.getElementById('s-fecha').value || hoy(),
+        km,
+        tipo: document.getElementById('s-tipo').value,
+        estado: document.getElementById('s-estado').value,
+        obs: document.getElementById('s-obs').value.trim(),
+        pkm: document.getElementById('s-pkm').value ? Number(document.getElementById('s-pkm').value) : null,
+        pfe: document.getElementById('s-pfe').value || null,
+        manoObra: calc.manoObra,
+        descuento: calc.descuento,
+        repuestosUsados,
+        total: calc.total
+      };
+
+      if (servId) {
+        const idx = db.servicios.findIndex(s => s.id === Number(servId));
+        if (idx >= 0) db.servicios[idx] = serviceObj;
+        showToast('Servicio y stock actualizados correctamente');
+      } else {
+        db.servicios.push(serviceObj);
+        showToast('Orden de servicio guardada con éxito');
+      }
+
+      saveDatabase();
+      closeModal('modal-servicio');
+      refreshUI();
+      verRecibo(serviceObj.id);
+    }
+
+    function editarServicio(id) { openModalServicio(id); }
+
+    function borrarServicio(id) {
+      if (!confirm('¿Seguro que deseas eliminar esta orden de servicio? Se devolverá el stock de repuestos.')) return;
+      
+      const s = db.servicios.find(x => x.id === id);
+      if (s && s.repuestosUsados) {
+        s.repuestosUsados.forEach(ru => {
+          if (ru.repuestoId) {
+            const item = db.repuestos.find(r => r.id === ru.repuestoId);
+            if (item) {
+              item.stock = Number(item.stock || 0) + Number(ru.cantidad || 0);
+            }
+          }
+        });
+      }
+
+      db.servicios = db.servicios.filter(s => s.id !== id);
+      saveDatabase();
+      refreshUI();
+      showToast('Servicio eliminado y stock restaurado');
+    }
+
+    function openModalRepuesto(repuestoId = null) {
+      document.getElementById('modal-rep-title').textContent = repuestoId ? 'Editar Repuesto' : 'Nuevo Repuesto';
+      document.getElementById('rep-edit-id').value = repuestoId || '';
+
+      if (repuestoId) {
+        const r = db.repuestos.find(x => x.id === Number(repuestoId));
+        if (r) {
+          document.getElementById('r-codigo').value = r.codigo;
+          document.getElementById('r-nombre').value = r.nombre;
+          document.getElementById('r-cat').value = r.categoria;
+          document.getElementById('r-stock').value = r.stock;
+          document.getElementById('r-min').value = r.min;
+          document.getElementById('r-costo').value = r.costo;
+          document.getElementById('r-venta').value = r.venta;
+        }
+      } else {
+        ['r-codigo', 'r-nombre', 'r-stock', 'r-min', 'r-costo', 'r-venta'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        document.getElementById('r-min').value = '3';
+      }
+      openModal('modal-repuesto');
+    }
+
+    function editarRepuesto(id) { openModalRepuesto(id); }
+
+    function guardarRepuestoModal() {
+      const codigo = document.getElementById('r-codigo').value.trim().toUpperCase();
+      const nombre = document.getElementById('r-nombre').value.trim();
+      const stock = Number(document.getElementById('r-stock').value) || 0;
+      const min = Number(document.getElementById('r-min').value) || 0;
+      const costo = Number(document.getElementById('r-costo').value) || 0;
+      const venta = Number(document.getElementById('r-venta').value) || 0;
+
+      if (!codigo || !nombre) {
+        showToast('Código y nombre son obligatorios', 'triangle-exclamation');
+        return;
+      }
+
+      const repId = document.getElementById('rep-edit-id').value;
+      const obj = {
+        id: repId ? Number(repId) : Date.now(),
+        codigo,
+        nombre,
+        categoria: document.getElementById('r-cat').value,
+        stock,
+        min,
+        costo,
+        venta
+      };
+
+      if (repId) {
+        const idx = db.repuestos.findIndex(r => r.id === Number(repId));
+        if (idx >= 0) db.repuestos[idx] = obj;
+        showToast('Repuesto actualizado');
+      } else {
+        db.repuestos.push(obj);
+        showToast('Repuesto añadido al inventario');
+      }
+
+      saveDatabase();
+      closeModal('modal-repuesto');
+      refreshUI();
+    }
+
+    function ajustarStock(id, diff) {
+      const item = db.repuestos.find(r => r.id === id);
+      if (!item) return;
+      item.stock = Math.max(0, Number(item.stock || 0) + diff);
+      saveDatabase();
+      renderInventario();
+      showToast(`Stock de ${item.codigo}: ${item.stock} u.`);
+    }
+
+    function borrarRepuesto(id) {
+      if (!confirm('¿Eliminar este repuesto del inventario?')) return;
+      db.repuestos = db.repuestos.filter(r => r.id !== id);
+      saveDatabase();
+      refreshUI();
+      showToast('Repuesto eliminado');
+    }
+
+    // LÓGICA DE CONEXIÓN CON GOOGLE SHEETS VIA CSV PUBLICADO
+    function loadGSheetControls() {
+      const inputUrl = document.getElementById('cfg-gsheet-url');
+      const inputAuto = document.getElementById('cfg-gsheet-autosync');
+      const badge = document.getElementById('gsheet-status-badge');
+
+      if (inputUrl) inputUrl.value = db.config.gsheetUrl || '';
+      if (inputAuto) inputAuto.checked = !!db.config.gsheetAutoSync;
+
+      if (badge) {
+        if (db.config.gsheetUrl) {
+          badge.textContent = 'Vinculado';
+          badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400';
+        } else {
+          badge.textContent = 'No vinculado';
+          badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-200 dark:bg-slate-800 text-slate-500';
+        }
+      }
+    }
+
+    function guardarUrlGSheet() {
+      const rawUrl = document.getElementById('cfg-gsheet-url').value.trim();
+      const autoSync = document.getElementById('cfg-gsheet-autosync').checked;
+
+      db.config.gsheetUrl = rawUrl;
+      db.config.gsheetAutoSync = autoSync;
+      saveDatabase();
+      loadGSheetControls();
+      showToast('Configuración de Google Sheets guardada');
+    }
+
+    function normalizarGSheetCsvUrl(rawUrl) {
+      if (!rawUrl) return '';
+      let url = rawUrl;
+      // Convierte enlaces /pubhtml a /pub?output=csv
+      if (url.includes('/pubhtml')) {
+        url = url.replace('/pubhtml', '/pub?output=csv');
+      } else if (url.includes('/edit') && !url.includes('/pub')) {
+        // En caso de pegar enlace normal de edición de sheets
+        url = url.replace(/\/edit.*$/, '/pub?output=csv');
+      }
+      return url;
+    }
+
+    async function sincronizarDesdeGoogleSheets(silencioso = false) {
+      const rawUrl = db.config.gsheetUrl || document.getElementById('cfg-gsheet-url')?.value.trim();
+      const fetchUrl = normalizarGSheetCsvUrl(rawUrl);
+
+      if (!fetchUrl) {
+        if (!silencioso) showToast('Ingresa y guarda una URL válida de Google Sheets primero', 'triangle-exclamation');
+        return;
+      }
+
+      const btn = document.getElementById('btn-sync-gsheet');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Sincronizando...';
+      }
+
+      try {
+        const response = await fetch(fetchUrl, { cache: 'no-cache' });
+        if (!response.ok) throw new Error('No se pudo acceder a la hoja de Google Sheets');
+
+        const csvText = await response.text();
+        const workbook = XLSX.read(csvText, { type: 'string' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+        if (!jsonData || !jsonData.length) {
+          throw new Error('No se encontraron registros en el archivo descargado');
+        }
+
+        let agregados = 0;
+        let actualizados = 0;
+
+        jsonData.forEach((row, index) => {
+          const codigo = String(row['Código'] || row['Codigo'] || row['codigo'] || row['SKU'] || row['sku'] || `ITEM-${index+1}`).trim().toUpperCase();
+          const nombre = String(row['Descripción'] || row['Descripcion'] || row['Nombre'] || row['nombre'] || row['Repuesto'] || '').trim();
+          const categoria = String(row['Categoría'] || row['Categoria'] || row['categoria'] || 'Varios').trim();
+          const stock = Number(row['Stock'] || row['stock'] || row['Cantidad'] || 0);
+          const min = Number(row['Stock_Minimo'] || row['Stock Minimo'] || row['Minimo'] || 3);
+          const costo = Number(row['Precio_Costo'] || row['Precio Costo'] || row['Costo'] || 0);
+          const venta = Number(row['Precio_Venta'] || row['Precio Venta'] || row['Venta'] || 0);
+
+          if (codigo && nombre) {
+            const existingIdx = db.repuestos.findIndex(r => r.codigo === codigo);
+            if (existingIdx >= 0) {
+              db.repuestos[existingIdx] = {
+                ...db.repuestos[existingIdx],
+                nombre,
+                categoria,
+                stock,
+                min,
+                costo,
+                venta
+              };
+              actualizados++;
+            } else {
+              db.repuestos.push({
+                id: Date.now() + index,
+                codigo,
+                nombre,
+                categoria,
+                stock,
+                min,
+                costo,
+                venta
+              });
+              agregados++;
+            }
+          }
+        });
+
+        saveDatabase();
+        refreshUI();
+        showToast(`Google Sheets sincronizado: ${agregados} nuevos, ${actualizados} actualizados`, 'check-circle');
+
+      } catch (err) {
+        console.error('Error sincronizando Google Sheets:', err);
+        if (!silencioso) showToast('Error al conectar con Google Sheets. Verifica que esté publicado en la web.', 'triangle-exclamation');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Sincronizar Ahora';
+        }
+      }
+    }
+
+    // IMPORTACIÓN MANUAL DE ARCHIVO LOCAL (EXCEL O CSV)
+    function importarInventarioExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+          if (!jsonData || !jsonData.length) {
+            showToast('El archivo Excel está vacío o no se reconoció el formato', 'triangle-exclamation');
+            return;
+          }
+
+          let agregados = 0;
+          let actualizados = 0;
+
+          jsonData.forEach((row, index) => {
+            const codigo = String(row['Código'] || row['Codigo'] || row['codigo'] || row['SKU'] || row['sku'] || `ITEM-${index+1}`).trim().toUpperCase();
+            const nombre = String(row['Descripción'] || row['Descripcion'] || row['Nombre'] || row['nombre'] || row['Repuesto'] || '').trim();
+            const categoria = String(row['Categoría'] || row['Categoria'] || row['categoria'] || 'Varios').trim();
+            const stock = Number(row['Stock'] || row['stock'] || row['Cantidad'] || 0);
+            const min = Number(row['Stock_Minimo'] || row['Stock Minimo'] || row['Minimo'] || 3);
+            const costo = Number(row['Precio_Costo'] || row['Precio Costo'] || row['Costo'] || 0);
+            const venta = Number(row['Precio_Venta'] || row['Precio Venta'] || row['Venta'] || 0);
+
+            if (codigo && nombre) {
+              const existingIdx = db.repuestos.findIndex(r => r.codigo === codigo);
+              if (existingIdx >= 0) {
+                db.repuestos[existingIdx] = {
+                  ...db.repuestos[existingIdx],
+                  nombre,
+                  categoria,
+                  stock,
+                  min,
+                  costo,
+                  venta
+                };
+                actualizados++;
+              } else {
+                db.repuestos.push({
+                  id: Date.now() + index,
+                  codigo,
+                  nombre,
+                  categoria,
+                  stock,
+                  min,
+                  costo,
+                  venta
+                });
+                agregados++;
+              }
+            }
+          });
+
+          saveDatabase();
+          refreshUI();
+          showToast(`Excel cargado: ${agregados} nuevos, ${actualizados} actualizados`, 'check-circle');
+        } catch (err) {
+          console.error('Error importando Excel:', err);
+          showToast('Ocurrió un error al procesar el archivo Excel', 'triangle-exclamation');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      event.target.value = '';
+    }
+
+    function descargarPlantillaExcel() {
+      const templateData = [
+        { "Código": "ACE-10W40", "Descripción": "Aceite Semisintético 10W40 1L", "Categoría": "Aceites y Lubricantes", "Stock": 15, "Stock_Minimo": 4, "Precio_Costo": 25000, "Precio_Venta": 40000 },
+        { "Código": "PAS-FRE-DEL", "Descripción": "Pastillas de Freno Delanteras", "Categoría": "Frenos", "Stock": 8, "Stock_Minimo": 3, "Precio_Costo": 15000, "Precio_Venta": 30000 },
+        { "Código": "BUJ-NGK-CPR", "Descripción": "Bujía NGK CPR8EA-9", "Categoría": "Eléctrico", "Stock": 20, "Stock_Minimo": 5, "Precio_Costo": 10000, "Precio_Venta": 20000 }
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Inventario");
+      XLSX.writeFile(wb, `plantilla_inventario_mototech_${hoy()}.xlsx`);
+      showToast('Plantilla Excel generada y descargada');
+    }
+
+    function verRecibo(servicioId) {
+      const s = db.servicios.find(x => x.id === Number(servicioId));
+      if (!s) return;
+      activeServiceIdForReceipt = s.id;
+      const m = db.motos.find(x => x.placa === s.placa);
+
+      document.getElementById('rc-taller-nombre').textContent = db.config.nombre || 'MOTO TECH TALLER';
+      document.getElementById('rc-taller-ruc').textContent = db.config.ruc || '';
+      document.getElementById('rc-taller-dir').textContent = db.config.dir ? `Dirección: ${db.config.dir}` : '';
+      document.getElementById('rc-taller-tel').textContent = db.config.tel ? `Tel: ${db.config.tel}` : '';
+      document.getElementById('rc-num-ot').textContent = `ORDEN DE SERVICIO #OT-${String(s.id).slice(-4)}`;
+      document.getElementById('rc-pie-mensaje').textContent = db.config.pie || '';
+
+      document.getElementById('rc-cliente').textContent = m ? m.cliente : 'Cliente General';
+      document.getElementById('rc-tel').textContent = m && m.tel ? m.tel : 'No registrado';
+      document.getElementById('rc-fecha').textContent = fmtFecha(s.fecha);
+      document.getElementById('rc-placa').textContent = s.placa;
+      document.getElementById('rc-moto').textContent = m ? `${m.marca || ''} ${m.modelo || ''}` : 'Moto';
+      document.getElementById('rc-km').textContent = `${(s.km || 0).toLocaleString()} km`;
+
+      document.getElementById('rc-tipo').textContent = s.tipo;
+      document.getElementById('rc-obs').textContent = s.obs || 'Mantenimiento y revisión general conforme a especificaciones.';
+
+      const tbody = document.getElementById('rc-items-body');
+      let itemsHtml = `
+        <tr>
+          <td class="py-1">Mano de Obra y Diagnóstico (${esc(s.tipo)})</td>
+          <td class="py-1 text-center">1</td>
+          <td class="py-1 text-right">${formatMoney(s.manoObra)}</td>
+          <td class="py-1 text-right font-semibold">${formatMoney(s.manoObra)}</td>
+        </tr>
+      `;
+
+      let totalPartes = 0;
+      (s.repuestosUsados || []).forEach(ru => {
+        const sub = ru.cantidad * ru.precioVenta;
+        totalPartes += sub;
+        itemsHtml += `
+          <tr>
+            <td class="py-1">${esc(ru.nombre)}</td>
+            <td class="py-1 text-center">${ru.cantidad}</td>
+            <td class="py-1 text-right">${formatMoney(ru.precioVenta)}</td>
+            <td class="py-1 text-right font-semibold">${formatMoney(sub)}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = itemsHtml;
+
+      document.getElementById('rc-mano-obra').textContent = formatMoney(s.manoObra);
+      document.getElementById('rc-repuestos').textContent = formatMoney(totalPartes);
+      
+      const descRow = document.getElementById('rc-descuento-row');
+      if (s.descuento > 0) {
+        descRow.classList.remove('hidden');
+        document.getElementById('rc-descuento').textContent = `-${formatMoney(s.descuento)}`;
+      } else {
+        descRow.classList.add('hidden');
+      }
+
+      document.getElementById('rc-total').textContent = formatMoney(s.total);
+
+      const prox = (s.pkm ? `${s.pkm.toLocaleString()} km` : '') + (s.pkm && s.pfe ? ' o el ' : '') + (s.pfe ? fmtFecha(s.pfe) : '');
+      document.getElementById('rc-prox-aceite').textContent = prox || 'Según kilometraje habitual';
+
+      openModal('modal-recibo');
+    }
+
+    function imprimirRecibo() { window.print(); }
+
+    function compartirReciboWhatsApp() {
+      if (!activeServiceIdForReceipt) return;
+      const s = db.servicios.find(x => x.id === activeServiceIdForReceipt);
+      if (!s) return;
+      const m = db.motos.find(x => x.placa === s.placa);
+      const telClean = (m && m.tel ? m.tel : '').replace(/[^\d]/g, '');
+
+      let msg = `*${db.config.nombre || 'MOTO TECH TALLER'}*\n`;
+      msg += `*Comprobante de Servicio #OT-${String(s.id).slice(-4)}*\n\n`;
+      msg += `Hola ${m ? m.cliente : 'estimado cliente'},\n`;
+      msg += `Tu motocicleta *${s.placa}* (${m ? m.modelo || '' : ''}) fue atendida con éxito.\n\n`;
+      msg += `📌 *Trabajo:* ${s.tipo}\n`;
+      msg += `🏁 *Km registrado:* ${(s.km || 0).toLocaleString()} km\n`;
+      msg += `💰 *Total a pagar:* ${formatMoney(s.total)}\n`;
+      if (s.pkm || s.pfe) {
+        msg += `🛢️ *Próx. cambio de aceite:* ${s.pkm ? s.pkm.toLocaleString() + ' km' : ''} ${s.pfe ? '(' + fmtFecha(s.pfe) + ')' : ''}\n`;
+      }
+      msg += `\n_${db.config.pie || '¡Gracias por confiar en nosotros!'}_`;
+
+      const url = telClean 
+        ? `https://wa.me/${telClean}?text=${encodeURIComponent(msg)}` 
+        : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    }
+
+    function enviarWhatsAppAlerta(placa) {
+      const m = db.motos.find(x => x.placa === placa);
+      if (!m) return;
+      const st = getEstadoAceite(m);
+      const telClean = (m.tel || '').replace(/[^\d]/g, '');
+
+      let msg = `Hola *${m.cliente}*, te saludamos desde *${db.config.nombre || 'el Taller de Motos'}*.\n\n`;
+      msg += `Te escribimos para recordarte que a tu moto *${m.marca ? m.marca + ' ' : ''}${m.modelo || ''}* (Placa: *${m.placa}*) le corresponde su cambio de aceite preventivo.\n`;
+      msg += `⚠️ *Estado:* ${st.texto}\n\n`;
+      msg += `Cuidar el aceite es vital para la vida útil de tu motor. ¿Te gustaría agendar una cita para hoy o mañana? ¡Quedamos atentos! 🏍️💨`;
+
+      const url = telClean 
+        ? `https://wa.me/${telClean}?text=${encodeURIComponent(msg)}` 
+        : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    }
+
+    function loadConfigForm() {
+      const c = db.config || {};
+      document.getElementById('cfg-nombre').value = c.nombre || '';
+      document.getElementById('cfg-ruc').value = c.ruc || '';
+      document.getElementById('cfg-tel').value = c.tel || '';
+      document.getElementById('cfg-dir').value = c.dir || '';
+      document.getElementById('cfg-moneda').value = c.moneda || '$';
+      document.getElementById('cfg-pie').value = c.pie || '';
+    }
+
+    function guardarConfigTaller() {
+      db.config = {
+        ...db.config,
+        nombre: document.getElementById('cfg-nombre').value.trim() || 'MOTO TECH TALLER',
+        ruc: document.getElementById('cfg-ruc').value.trim(),
+        tel: document.getElementById('cfg-tel').value.trim(),
+        dir: document.getElementById('cfg-dir').value.trim(),
+        moneda: document.getElementById('cfg-moneda').value.trim() || '$',
+        pie: document.getElementById('cfg-pie').value.trim()
+      };
+      saveDatabase();
+      document.getElementById('brand-title').innerHTML = `MOTO<span class="text-brand-600">TECH</span>`;
+      showToast('Configuración guardada');
+      refreshUI();
+    }
+
+    function exportarCSV(tipo) {
+      let csvContent = '\uFEFF';
+      let filename = `exportacion_${tipo}_${hoy()}.csv`;
+
+      if (tipo === 'motos') {
+        csvContent += 'Placa,Cliente,Telefono,Marca,Modelo,Ano,Color,Km_Actual,Documento,Notas\n';
+        db.motos.forEach(m => {
+          csvContent += `"${escCsv(m.placa)}","${escCsv(m.cliente)}","${escCsv(m.tel)}","${escCsv(m.marca)}","${escCsv(m.modelo)}","${escCsv(m.ano)}","${escCsv(m.color)}",${m.km || 0},"${escCsv(m.doc)}","${escCsv(m.notas)}"\n`;
+        });
+      } else if (tipo === 'servicios') {
+        csvContent += 'ID,Fecha,Placa,Cliente,Km_Servicio,Tipo_Trabajo,Estado,Mano_Obra,Descuento,Total,Prox_Aceite_Km,Prox_Aceite_Fecha,Observaciones\n';
+        db.servicios.forEach(s => {
+          const m = db.motos.find(x => x.placa === s.placa);
+          csvContent += `${s.id},"${s.fecha}","${escCsv(s.placa)}","${escCsv(m ? m.cliente : '')}",${s.km || 0},"${escCsv(s.tipo)}","${escCsv(s.estado)}",${s.manoObra || 0},${s.descuento || 0},${s.total || 0},${s.pkm || ''},"${s.pfe || ''}","${escCsv(s.obs)}"\n`;
+        });
+      } else if (tipo === 'inventario') {
+        csvContent += 'Código,Descripción,Categoría,Stock,Stock_Minimo,Precio_Costo,Precio_Venta\n';
+        db.repuestos.forEach(r => {
+          csvContent += `"${escCsv(r.codigo)}","${escCsv(r.nombre)}","${escCsv(r.categoria)}",${r.stock || 0},${r.min || 0},${r.costo || 0},${r.venta || 0}\n`;
+        });
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(`Archivo CSV "${filename}" descargado`);
+    }
+
+    function escCsv(s) { return String(s || '').replace(/"/g, '""'); }
+
+    function descargarRespaldoJSON() {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(db, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `respaldo_taller_motos_${hoy()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Respaldo JSON descargado');
+    }
+
+    function restaurarRespaldoArchivo(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.motos || !parsed.servicios) throw new Error('Formato no compatible');
+          if (confirm(`¿Restaurar respaldo? Reemplazará los datos actuales con ${parsed.motos.length} motos y ${parsed.servicios.length} servicios.`)) {
+            db = parsed;
+            if (!db.repuestos) db.repuestos = DEFAULT_REPUESTOS;
+            if (!db.config) db.config = {};
+            saveDatabase();
+            refreshUI();
+            showToast('¡Base de datos restaurada correctamente!');
+          }
+        } catch (err) {
+          alert('El archivo seleccionado no es un respaldo válido de MotoTech.');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
+      });
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => {
+          console.log('SW registration note:', err);
+        });
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initDatabase();
+      refreshUI();
+
+      // Sincronización automática al iniciar si está activa
+      if (db.config.gsheetAutoSync && db.config.gsheetUrl) {
+        sincronizarDesdeGoogleSheets(true);
+      }
+    });
+  </script>
+</body>
+</html>
